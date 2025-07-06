@@ -1,0 +1,258 @@
+{
+  "name": "Inbox Processing Working Version",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inbox-trigger",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "inbox-trigger"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "get",
+        "pageId": "={{ $json.body.pageId }}"
+      },
+      "id": "get-page",
+      "name": "Get Inbox Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "21e0d2195e1c809bae77f183b66a78b2",
+        "limit": 50
+      },
+      "id": "get-epics",
+      "name": "Get Epics",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "21e0d2195e1c806a947ff1806bffa2fb",
+        "limit": 100
+      },
+      "id": "get-stories",
+      "name": "Get Stories",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "prompt": {
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are an AI assistant for a Project Management System with 3 main projects:\n1. Techniq Company Building\n2. Trading & Financial Markets Platform\n3. Healthcare AI Product Development\n\nAnalyze inbox notes and classify them appropriately."
+            },
+            {
+              "role": "user",
+              "content": "Note: {{ $node['Get Inbox Page'].json.properties.Note.title[0].plain_text }}\n\nEpics: {{ $node['Get Epics'].json.map(e => e.properties.Name.title[0].plain_text).slice(0,10).join(', ') }}\n\nStories: {{ $node['Get Stories'].json.map(s => s.properties.Name.title[0].plain_text).slice(0,10).join(', ') }}\n\nClassify and respond with JSON containing:\n- classification (Task/Story/Epic/Knowledge/Archive)\n- project (name)\n- priority (Critical/High/Medium/Low)\n- confidence (0-1)\n- reasoning\n- ai_action_plan"
+            }
+          ]
+        },
+        "maxTokens": 2000,
+        "temperature": 0.3
+      },
+      "id": "ai-node",
+      "name": "AI Analysis",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiText = $input.first().json.message.content;\nconst aiResponse = JSON.parse(aiText);\nconst inboxItem = $node['Get Inbox Page'].json;\n\nlet status = 'Draft';\nif (aiResponse.confidence >= 0.7) {\n  status = 'Pending Approval';\n}\n\nif (!aiResponse.ai_action_plan) {\n  aiResponse.ai_action_plan = `**Classification**: ${aiResponse.classification}\\n**Project**: ${aiResponse.project}\\n**Priority**: ${aiResponse.priority}\\n**Confidence**: ${(aiResponse.confidence * 100).toFixed(0)}%\\n\\n**Reasoning**: ${aiResponse.reasoning}`;\n}\n\nreturn {\n  inbox_id: inboxItem.id,\n  processing_status: status,\n  ai_confidence: aiResponse.confidence,\n  ai_action_plan: aiResponse.ai_action_plan,\n  confidence_reasoning: aiResponse.reasoning,\n  priority: aiResponse.priority,\n  classification: aiResponse.classification,\n  project: aiResponse.project\n};"
+      },
+      "id": "parse-node",
+      "name": "Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": "={{ $json.inbox_id }}",
+        "properties": {
+          "Processing Status": {
+            "select": {
+              "name": "={{ $json.processing_status }}"
+            }
+          },
+          "AI Confidence": "={{ $json.ai_confidence }}",
+          "AI Action Plan": "={{ $json.ai_action_plan }}",
+          "Confidence Reasoning": "={{ $json.confidence_reasoning }}",
+          "Priority": {
+            "select": {
+              "name": "={{ $json.priority }}"
+            }
+          }
+        }
+      },
+      "id": "update-node",
+      "name": "Update Inbox",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.ai_confidence }}",
+              "operation": "largerEqual",
+              "value2": 0.9
+            }
+          ]
+        }
+      },
+      "id": "check-confidence",
+      "name": "High Confidence?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "Item processed with confidence {{ $json.ai_confidence }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-node",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Inbox Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Inbox Page": {
+      "main": [
+        [
+          {
+            "node": "Get Epics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Epics": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Stories": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Update Inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Inbox": {
+      "main": [
+        [
+          {
+            "node": "High Confidence?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Confidence?": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

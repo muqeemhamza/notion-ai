@@ -1,0 +1,15 @@
+{
+  "test_inbox_entry": {
+    "title": "Test: Verify Notion MCP Integration",
+    "content": "This is a test entry created by Claude to verify that the Notion MCP integration is working correctly. It should appear in the Inbox database with Processing Status as 'Draft'.",
+    "properties": {
+      "Processing Status": "Draft",
+      "AI Confidence": 0.85,
+      "AI Action Plan": "**Test Entry Analysis**\n\n📋 **Classification**: System Test\n🎯 **Confidence**: 85%\n\n**Recommended Action**: Archive after verification\n\n**Reasoning**: This is a test entry to verify system integration.",
+      "Priority": "Low",
+      "Tags": ["test", "system-integration", "automation-testing"]
+    },
+    "created_at": "2025-07-04T00:00:00Z",
+    "purpose": "Verify that Claude can create entries in Notion Inbox via MCP"
+  }
+}

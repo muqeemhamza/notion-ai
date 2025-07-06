@@ -1,0 +1,25 @@
+{
+  "name": "ai-notion-pms",
+  "version": "1.0.0",
+  "description": "AI-Augmented Notion Project Management System",
+  "main": "index.js",
+  "scripts": {
+    "test:notion": "node tests/test-notion-integration.js",
+    "test:n8n": "node tests/test-n8n-integration.js",
+    "test:n8n-api": "node tests/test-n8n-api.js",
+    "test:all": "npm run test:notion && npm run test:n8n",
+    "setup": "npm install"
+  },
+  "dependencies": {
+    "@notionhq/client": "^2.2.14"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "notion",
+    "n8n",
+    "ai",
+    "project-management"
+  ],
+  "author": "",
+  "license": "ISC"
+}

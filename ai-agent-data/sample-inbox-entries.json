@@ -1,0 +1,123 @@
+{
+  "test_entries": [
+    {
+      "title": "Implement real-time market data feed for trading dashboard",
+      "content": "We need to set up WebSocket connections to receive real-time price updates from Interactive Brokers API. This should include bid/ask spreads, last trade price, volume, and market depth. The data should be stored in our time-series database and made available to the frontend dashboard with <100ms latency.",
+      "expected_classification": "Task",
+      "expected_project": "Trading & Financial Markets Platform",
+      "expected_epic": "Real-Time Market Data Pipeline",
+      "expected_confidence": 0.92,
+      "suggested_properties": {
+        "Priority": "High",
+        "Tags": ["api-integration", "real-time-data", "trading-infrastructure"],
+        "Complexity": "Medium"
+      }
+    },
+    {
+      "title": "Design company logo and brand identity",
+      "content": "Create a modern, professional logo for Techniq that represents innovation and reliability. Need variations for light/dark backgrounds, social media profiles, and business cards. Also develop color palette, typography guidelines, and brand voice documentation.",
+      "expected_classification": "Story",
+      "expected_project": "Techniq Company Building",
+      "expected_epic": "Develop Brand Identity",
+      "expected_confidence": 0.88,
+      "suggested_properties": {
+        "Priority": "High",
+        "Tags": ["branding", "design", "company-identity"],
+        "Complexity": "High"
+      }
+    },
+    {
+      "title": "Research FDA approval process for AI diagnostic tools",
+      "content": "Need to understand the regulatory pathway for getting FDA clearance for our AI-powered diagnostic assistant. Look into 510(k) vs PMA pathways, clinical validation requirements, and timeline expectations. Also research successful precedents from companies like Viz.ai and Aidoc.",
+      "expected_classification": "Task",
+      "expected_project": "Healthcare AI Product Development",
+      "expected_epic": "Regulatory Compliance Framework",
+      "expected_confidence": 0.85,
+      "suggested_properties": {
+        "Priority": "Medium",
+        "Tags": ["regulatory", "fda", "compliance", "research"],
+        "Complexity": "High"
+      }
+    },
+    {
+      "title": "Meeting with potential senior engineer candidate",
+      "content": "Had a great conversation with Sarah Chen about the senior backend role. She has 8 years experience with distributed systems, worked at Stripe and Uber. Strong Python and Go skills. Asking for $180k base. Next step is technical interview with the team.",
+      "expected_classification": "Task",
+      "expected_project": "Techniq Company Building",
+      "expected_epic": "Build Core Team",
+      "expected_confidence": 0.75,
+      "suggested_properties": {
+        "Priority": "High",
+        "Tags": ["hiring", "interview", "team-building"],
+        "Complexity": "Low"
+      }
+    },
+    {
+      "title": "Ideas for improving backtesting performance",
+      "content": "Current backtesting is slow. Maybe try: parallel processing, caching frequently accessed data, using numpy vectorization instead of loops, or switching to Rust for performance critical paths. Need to benchmark different approaches.",
+      "expected_classification": "Story",
+      "expected_project": "Trading & Financial Markets Platform",
+      "expected_epic": "Backtesting Framework Optimization",
+      "expected_confidence": 0.68,
+      "suggested_properties": {
+        "Priority": "Medium",
+        "Tags": ["performance", "optimization", "backtesting"],
+        "Complexity": "High"
+      }
+    },
+    {
+      "title": "Follow up on contract negotiations",
+      "content": "Need to review the latest terms and get back to them by Friday. Check with legal team first.",
+      "expected_classification": "Unclear - needs more context",
+      "expected_project": "Unknown",
+      "expected_confidence": 0.35,
+      "suggested_properties": {
+        "Priority": "Medium",
+        "Tags": ["follow-up", "contracts"],
+        "Needs_Clarification": true
+      }
+    },
+    {
+      "title": "Set up HIPAA-compliant cloud infrastructure",
+      "content": "Configure AWS environment with proper security controls for HIPAA compliance. This includes: encrypted storage (S3 with SSE-KMS), VPC with private subnets, CloudTrail logging, IAM policies following least privilege, and BAA agreement with AWS. Also need to set up automated compliance scanning.",
+      "expected_classification": "Epic",
+      "expected_project": "Healthcare AI Product Development",
+      "expected_epic": "HIPAA-Compliant Infrastructure",
+      "expected_confidence": 0.94,
+      "suggested_properties": {
+        "Priority": "Critical",
+        "Tags": ["infrastructure", "security", "hipaa", "compliance"],
+        "Complexity": "Very High"
+      }
+    },
+    {
+      "title": "Create investor pitch deck",
+      "content": "Prepare a 15-slide pitch deck for Series A fundraising. Should include: problem/solution, market size ($50B healthcare AI market), our unique approach, traction metrics, team backgrounds, financial projections, and use of funds. Target raise: $10-15M.",
+      "expected_classification": "Story",
+      "expected_project": "Techniq Company Building",
+      "expected_epic": "Series A Fundraising",
+      "expected_confidence": 0.91,
+      "suggested_properties": {
+        "Priority": "High",
+        "Tags": ["fundraising", "investor-relations", "pitch-deck"],
+        "Complexity": "Medium"
+      }
+    }
+  ],
+  "knowledge_base_entries": [
+    {
+      "title": "WebSocket Implementation Best Practices",
+      "type": "Technical Documentation",
+      "content": "## WebSocket Best Practices for Financial Data\n\n1. **Connection Management**\n   - Implement automatic reconnection with exponential backoff\n   - Use heartbeat/ping-pong to detect stale connections\n   - Handle connection state transitions gracefully\n\n2. **Data Handling**\n   - Use message queues to prevent data loss\n   - Implement sequence numbers for message ordering\n   - Compress data using MessagePack or Protocol Buffers\n\n3. **Security**\n   - Use WSS (WebSocket Secure) only\n   - Implement authentication via JWT tokens\n   - Rate limit connections per user\n\n4. **Performance**\n   - Batch messages when possible\n   - Use binary frames for market data\n   - Implement client-side throttling",
+      "tags": ["websocket", "real-time", "best-practices", "trading"],
+      "related_to": "Trading & Financial Markets Platform"
+    },
+    {
+      "title": "FDA Software as Medical Device (SaMD) Guidelines",
+      "type": "Regulatory Knowledge",
+      "content": "## Key FDA Requirements for AI/ML Medical Software\n\n1. **Classification**: Most AI diagnostic tools fall under Class II (moderate risk)\n2. **Pathways**: 510(k) for substantial equivalence, De Novo for novel devices\n3. **Clinical Validation**: Need prospective studies showing safety/effectiveness\n4. **Documentation Required**:\n   - Software Development Plan\n   - V&V (Verification & Validation) protocols\n   - Clinical evaluation reports\n   - Post-market surveillance plan\n5. **Timeline**: Typically 6-12 months for 510(k) review",
+      "tags": ["fda", "regulatory", "medical-device", "compliance"],
+      "related_to": "Healthcare AI Product Development"
+    }
+  ]
+}

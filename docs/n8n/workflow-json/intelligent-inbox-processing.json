@@ -1,0 +1,716 @@
+{
+  "name": "Intelligent Inbox Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "event": "created",
+        "databaseId": "21e0d2195e1c80228d8cf8ffd2a27275",
+        "simple": false,
+        "additionalOptions": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Notion Trigger - New Inbox Item",
+      "type": "n8n-nodes-base.notionTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "21e0d2195e1c809bae77f183b66a78b2",
+        "filterType": "manual",
+        "conditions": {
+          "or": [
+            {
+              "key": "Status|status",
+              "condition": "doesNotEqual",
+              "value": "Completed"
+            }
+          ]
+        },
+        "options": {
+          "limit": 50
+        }
+      },
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Get Active Epics",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 200],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "21e0d2195e1c806a947ff1806bffa2fb",
+        "filterType": "manual",
+        "conditions": {
+          "or": [
+            {
+              "key": "Status|status",
+              "condition": "doesNotEqual",
+              "value": "Completed"
+            }
+          ]
+        },
+        "options": {
+          "limit": 100
+        }
+      },
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "name": "Get Active Stories",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "21e0d2195e1c80a28c67dc2a8ed20e1b",
+        "filterType": "manual",
+        "conditions": {
+          "or": [
+            {
+              "key": "Status|status",
+              "condition": "doesNotEqual",
+              "value": "Completed"
+            }
+          ]
+        },
+        "options": {
+          "limit": 200
+        }
+      },
+      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "name": "Get Active Tasks",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 400],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "21e0d2195e1c802ca067e05dd1e4e908",
+        "options": {
+          "limit": 20,
+          "sort": {
+            "sortValue": [
+              {
+                "key": "Last Edited Time|last_edited_time",
+                "type": "descending"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "name": "Get Recent Knowledge",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 500],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "messageValues": [
+            {
+              "role": "system",
+              "content": "You are an AI assistant for a personalized project management system. You have deep context about the user's patterns and preferences.\n\nAnalyze the inbox note and determine:\n1. Classification (To Convert/Sticky/Archive/Knowledge)\n2. Action type (update_existing/create_new/knowledge_only)\n3. If creating new: Entity type (epic/story/task)\n4. If updating: Which existing items to update (with IDs)\n5. Tags and context\n6. Knowledge to capture\n7. Confidence score (0-1)\n\nIMPORTANT: Learn from the user's patterns:\n- Writing style and vocabulary\n- How they typically categorize items\n- Their project organization patterns\n- Common phrases and terminology\n\nRespond in this exact JSON format:\n{\n  \"classification\": \"To Convert|Sticky|Archive|Knowledge\",\n  \"action_type\": \"update_existing|create_new|knowledge_only\",\n  \"entity_type\": \"epic|story|task|null\",\n  \"related_items\": [{\"id\": \"...\", \"type\": \"...\", \"confidence\": 0.9}],\n  \"suggested_title\": \"...\",\n  \"enhanced_description\": \"...\",\n  \"tags\": [\"...\"],\n  \"knowledge_to_capture\": \"...\",\n  \"confidence\": 0.95,\n  \"reasoning\": \"...\"\n}"
+            },
+            {
+              "role": "user",
+              "content": "=== INBOX NOTE ===\n{{ $json.properties.Name.title[0].plain_text }}\n\n=== ACTIVE CONTEXT ===\nEpics ({{ $node['Get Active Epics'].json.length }}):\n{{ $node['Get Active Epics'].json.map(e => `- ${e.properties.Name.title[0].plain_text}`).join('\\n') }}\n\nStories ({{ $node['Get Active Stories'].json.length }}):\n{{ $node['Get Active Stories'].json.slice(0, 10).map(s => `- ${s.properties.Name.title[0].plain_text}`).join('\\n') }}\n\nTasks ({{ $node['Get Active Tasks'].json.length }}):\n{{ $node['Get Active Tasks'].json.slice(0, 10).map(t => `- ${t.properties.Name.title[0].plain_text}`).join('\\n') }}\n\nRecent Knowledge:\n{{ $node['Get Recent Knowledge'].json.slice(0, 5).map(k => `- ${k.properties.Title.title[0].plain_text}`).join('\\n') }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 1500
+        }
+      },
+      "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "name": "AI Analysis with Context",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [650, 350],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response\nconst aiResponse = JSON.parse($input.first().json.choices[0].message.content);\n\n// Get inbox item details\nconst inboxItem = $node['Notion Trigger - New Inbox Item'].json;\n\n// Return structured data for routing\nreturn {\n  classification: aiResponse.classification,\n  action_type: aiResponse.action_type,\n  entity_type: aiResponse.entity_type,\n  related_items: aiResponse.related_items || [],\n  tags: aiResponse.tags || [],\n  knowledge: aiResponse.knowledge_to_capture || null,\n  title: aiResponse.suggested_title || inboxItem.properties.Name.title[0].plain_text,\n  description: aiResponse.enhanced_description || '',\n  confidence: aiResponse.confidence || 0.5,\n  reasoning: aiResponse.reasoning || '',\n  inbox_id: inboxItem.id,\n  inbox_url: inboxItem.url\n};"
+      },
+      "id": "a7b8c9d0-e1f2-3456-abcd-567890123456",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 350]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action_type }}",
+                    "rightValue": "create_new",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "create_new"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action_type }}",
+                    "rightValue": "update_existing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "update_existing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action_type }}",
+                    "rightValue": "knowledge_only",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "knowledge_only"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "b8c9d0e1-f2a3-4567-bcde-678901234567",
+      "name": "Route by Action Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [1050, 350]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.entity_type }}",
+                    "rightValue": "epic",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "epic"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.entity_type }}",
+                    "rightValue": "story",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "story"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.entity_type }}",
+                    "rightValue": "task",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "task"
+            }
+          ]
+        }
+      },
+      "id": "c9d0e1f2-a3b4-5678-cdef-789012345678",
+      "name": "Route by Entity Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": "21e0d2195e1c809bae77f183b66a78b2",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Name|title",
+              "title": "={{ $json.title }}"
+            },
+            {
+              "key": "Description|rich_text",
+              "richText": "={{ $json.description }}"
+            },
+            {
+              "key": "Status|status",
+              "statusValue": "To Do"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d0e1f2a3-b4c5-6789-defa-890123456789",
+      "name": "Create Epic",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1450, 100],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "epic-cascade-trigger",
+        "options": {}
+      },
+      "id": "e1f2a3b4-c5d6-7890-efab-901234567890",
+      "name": "Trigger Epic Cascade",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [1650, 100],
+      "webhookId": "epic-cascade-webhook"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "f2a3b4c5-d6e7-8901-fabc-012345678901",
+      "name": "Loop Through Updates",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [1250, 350]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": "={{ $json.related_items[0].id }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Description|rich_text",
+              "richText": "={{ $node['Get Current Item'].json.properties.Description.rich_text[0].plain_text }}\\n\\n---\\nUpdate from Inbox: {{ $json.description }}"
+            }
+          ]
+        }
+      },
+      "id": "a3b4c5d6-e7f8-9012-abcd-123456789012",
+      "name": "Update Existing Item",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1450, 350],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": "21e0d2195e1c802ca067e05dd1e4e908",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Title|title",
+              "title": "={{ $json.title }}"
+            },
+            {
+              "key": "Key Insights|rich_text",
+              "richText": "={{ $json.knowledge }}"
+            },
+            {
+              "key": "Tags|multi_select",
+              "multiSelectValue": "={{ $json.tags }}"
+            },
+            {
+              "key": "Source|relation",
+              "relationValue": "={{ [$json.inbox_id] }}"
+            }
+          ]
+        }
+      },
+      "id": "b4c5d6e7-f8a9-0123-bcde-234567890123",
+      "name": "Create Knowledge Entry",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1250, 500],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": "={{ $node['Parse AI Response'].json.inbox_id }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Category|select",
+              "selectValue": "={{ $node['Parse AI Response'].json.classification }}"
+            },
+            {
+              "key": "Processed|checkbox",
+              "checkboxValue": true
+            },
+            {
+              "key": "AI Confidence|number",
+              "numberValue": "={{ $node['Parse AI Response'].json.confidence }}"
+            }
+          ]
+        }
+      },
+      "id": "c5d6e7f8-a9b0-1234-cdef-345678901234",
+      "name": "Update Inbox Item",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [1650, 400],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Store learning data for context management\nconst learningData = {\n  timestamp: new Date().toISOString(),\n  workflow: 'intelligent-inbox-processing',\n  input: {\n    raw_text: $node['Notion Trigger - New Inbox Item'].json.properties.Name.title[0].plain_text,\n    classification: $node['Parse AI Response'].json.classification,\n    action_type: $node['Parse AI Response'].json.action_type\n  },\n  ai_response: $node['Parse AI Response'].json,\n  outcome: {\n    success: true,\n    entity_created: $node['Parse AI Response'].json.entity_type,\n    confidence: $node['Parse AI Response'].json.confidence\n  }\n};\n\n// This would typically be sent to a context management system\n// For now, we'll prepare it for storage\nreturn learningData;"
+      },
+      "id": "d6e7f8a9-b0c1-2345-defa-456789012345",
+      "name": "Capture Learning Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1850, 400]
+    }
+  ],
+  "connections": {
+    "Notion Trigger - New Inbox Item": {
+      "main": [
+        [
+          {
+            "node": "Get Active Epics",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Active Stories",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Active Tasks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Recent Knowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Epics": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis with Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Stories": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis with Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Tasks": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis with Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Knowledge": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis with Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analysis with Context": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Route by Action Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Action Type": {
+      "main": [
+        [
+          {
+            "node": "Route by Entity Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Through Updates",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Knowledge Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Entity Type": {
+      "main": [
+        [
+          {
+            "node": "Create Epic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Epic": {
+      "main": [
+        [
+          {
+            "node": "Trigger Epic Cascade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Epic Cascade": {
+      "main": [
+        [
+          {
+            "node": "Update Inbox Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Updates": {
+      "main": [
+        [
+          {
+            "node": "Update Existing Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Existing Item": {
+      "main": [
+        [
+          {
+            "node": "Update Inbox Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Knowledge Entry": {
+      "main": [
+        [
+          {
+            "node": "Update Inbox Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Inbox Item": {
+      "main": [
+        [
+          {
+            "node": "Capture Learning Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-handler-workflow"
+  },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "v1.0.0",
+  "triggerCount": 1
+}

@@ -1,0 +1,378 @@
+{
+  "name": "LLM Context Management System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "context-request",
+        "options": {
+          "responseData": "allEntries",
+          "responsePropertyName": "data"
+        }
+      },
+      "id": "webhook-entry",
+      "name": "Context Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "context-request"
+    },
+    {
+      "parameters": {
+        "operation": "aggregate",
+        "collection": "user_context",
+        "query": "[\n  {\n    \"$match\": {\n      \"user_id\": \"{{ $json.user_id }}\"\n    }\n  },\n  {\n    \"$sort\": {\n      \"timestamp\": -1\n    }\n  },\n  {\n    \"$limit\": 1\n  }\n]",
+        "options": {}
+      },
+      "id": "get-user-context",
+      "name": "Get User Context",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1,
+      "position": [450, 200],
+      "credentials": {
+        "mongoDb": {
+          "id": "3",
+          "name": "MongoDB Context Store"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": "{{ $json.workflow_context.database_id }}",
+        "options": {
+          "limit": 50,
+          "sort": {
+            "sortValue": [
+              {
+                "key": "Last Edited Time|last_edited_time",
+                "type": "descending"
+              }
+            ]
+          }
+        }
+      },
+      "id": "get-recent-items",
+      "name": "Get Recent Items",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "credentials": {
+        "notionApi": {
+          "id": "1",
+          "name": "Notion API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "find",
+        "collection": "interaction_history",
+        "query": "{\n  \"user_id\": \"{{ $json.user_id }}\",\n  \"workflow\": \"{{ $json.workflow_type }}\",\n  \"timestamp\": {\n    \"$gte\": \"{{ $now.minus(30, 'days').toISO() }}\"\n  }\n}",
+        "options": {
+          "limit": 100,
+          "sort": {
+            "timestamp": -1
+          }
+        }
+      },
+      "id": "get-historical-patterns",
+      "name": "Get Historical Patterns",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1,
+      "position": [450, 400],
+      "credentials": {
+        "mongoDb": {
+          "id": "3",
+          "name": "MongoDB Context Store"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-ada-002",
+        "input": "={{ $json.content_for_embedding }}",
+        "options": {}
+      },
+      "id": "generate-embedding",
+      "name": "Generate Content Embedding",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [650, 200],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "aggregate",
+        "collection": "knowledge_graph",
+        "query": "[\n  {\n    \"$search\": {\n      \"index\": \"knowledge_embeddings\",\n      \"knnBeta\": {\n        \"vector\": {{ $json.embedding }},\n        \"path\": \"embedding\",\n        \"k\": 10\n      }\n    }\n  },\n  {\n    \"$project\": {\n      \"_id\": 1,\n      \"title\": 1,\n      \"content\": 1,\n      \"tags\": 1,\n      \"score\": { \"$meta\": \"searchScore\" }\n    }\n  }\n]",
+        "options": {}
+      },
+      "id": "semantic-search",
+      "name": "Semantic Knowledge Search",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1,
+      "position": [850, 200],
+      "credentials": {
+        "mongoDb": {
+          "id": "3",
+          "name": "MongoDB Context Store"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyze patterns from historical data\nconst historicalData = $node['Get Historical Patterns'].json;\nconst userContext = $node['Get User Context'].json[0] || {};\n\n// Extract patterns\nconst patterns = {\n  // Writing style patterns\n  writing_style: {\n    average_length: calculateAverageLength(historicalData),\n    common_phrases: extractCommonPhrases(historicalData),\n    vocabulary_level: analyzeVocabulary(historicalData),\n    structure_preference: analyzeStructure(historicalData)\n  },\n  \n  // Decision patterns\n  decision_patterns: {\n    categorization: analyzeCategorization(historicalData),\n    priority_assignment: analyzePriority(historicalData),\n    entity_creation: analyzeEntityPatterns(historicalData)\n  },\n  \n  // Time patterns\n  temporal_patterns: {\n    peak_activity: analyzeActivityTimes(historicalData),\n    task_duration_accuracy: analyzeEstimationAccuracy(historicalData),\n    completion_patterns: analyzeCompletionPatterns(historicalData)\n  },\n  \n  // Success patterns\n  success_indicators: {\n    high_confidence_patterns: filterHighConfidence(historicalData),\n    frequently_used: extractFrequentPatterns(historicalData),\n    correction_patterns: analyzeCorrectionPatterns(historicalData)\n  }\n};\n\n// Helper functions\nfunction calculateAverageLength(data) {\n  const lengths = data.map(d => d.input?.length || 0);\n  return lengths.reduce((a, b) => a + b, 0) / lengths.length;\n}\n\nfunction extractCommonPhrases(data) {\n  const phrases = {};\n  data.forEach(d => {\n    const words = (d.input || '').split(' ');\n    for (let i = 0; i < words.length - 2; i++) {\n      const phrase = words.slice(i, i + 3).join(' ');\n      phrases[phrase] = (phrases[phrase] || 0) + 1;\n    }\n  });\n  return Object.entries(phrases)\n    .sort((a, b) => b[1] - a[1])\n    .slice(0, 20)\n    .map(([phrase]) => phrase);\n}\n\nfunction analyzeVocabulary(data) {\n  // Simplified vocabulary analysis\n  const allWords = data.flatMap(d => (d.input || '').split(' '));\n  const uniqueWords = new Set(allWords);\n  return {\n    total_words: allWords.length,\n    unique_words: uniqueWords.size,\n    diversity_ratio: uniqueWords.size / allWords.length\n  };\n}\n\nfunction analyzeStructure(data) {\n  // Analyze common structures\n  return {\n    uses_bullets: data.some(d => d.input?.includes('•') || d.input?.includes('-')),\n    uses_numbering: data.some(d => /\\d\\./.test(d.input || '')),\n    average_paragraphs: data.map(d => (d.input || '').split('\\n\\n').length).reduce((a, b) => a + b, 0) / data.length\n  };\n}\n\nfunction analyzeCategorization(data) {\n  const categories = {};\n  data.forEach(d => {\n    if (d.output?.category) {\n      categories[d.output.category] = (categories[d.output.category] || 0) + 1;\n    }\n  });\n  return categories;\n}\n\nfunction analyzePriority(data) {\n  return data.filter(d => d.output?.priority).map(d => ({\n    keywords: d.input,\n    priority: d.output.priority\n  }));\n}\n\nfunction analyzeEntityPatterns(data) {\n  const entities = { epic: 0, story: 0, task: 0 };\n  data.forEach(d => {\n    if (d.output?.entity_type) {\n      entities[d.output.entity_type]++;\n    }\n  });\n  return entities;\n}\n\nfunction analyzeActivityTimes(data) {\n  const hours = data.map(d => new Date(d.timestamp).getHours());\n  const hourCounts = {};\n  hours.forEach(h => {\n    hourCounts[h] = (hourCounts[h] || 0) + 1;\n  });\n  return hourCounts;\n}\n\nfunction analyzeEstimationAccuracy(data) {\n  const estimations = data.filter(d => d.estimated && d.actual);\n  if (estimations.length === 0) return 1;\n  \n  const accuracy = estimations.map(d => d.actual / d.estimated);\n  return accuracy.reduce((a, b) => a + b, 0) / accuracy.length;\n}\n\nfunction analyzeCompletionPatterns(data) {\n  return data.filter(d => d.status === 'completed').length / data.length;\n}\n\nfunction filterHighConfidence(data) {\n  return data.filter(d => d.confidence > 0.8);\n}\n\nfunction extractFrequentPatterns(data) {\n  const patterns = {};\n  data.forEach(d => {\n    const pattern = `${d.action_type}-${d.entity_type}`;\n    patterns[pattern] = (patterns[pattern] || 0) + 1;\n  });\n  return patterns;\n}\n\nfunction analyzeCorrectionPatterns(data) {\n  return data.filter(d => d.was_corrected).map(d => ({\n    original: d.original,\n    corrected: d.corrected,\n    pattern: d.correction_type\n  }));\n}\n\nreturn patterns;"
+      },
+      "id": "analyze-patterns",
+      "name": "Analyze User Patterns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build comprehensive context for LLM\nconst requestData = $node['Context Request Webhook'].json;\nconst userContext = $node['Get User Context'].json[0] || {};\nconst recentItems = $node['Get Recent Items'].json || [];\nconst patterns = $node['Analyze User Patterns'].json;\nconst semanticMatches = $node['Semantic Knowledge Search'].json || [];\n\n// Build enhanced context\nconst enhancedContext = {\n  // User-specific context\n  user: {\n    id: requestData.user_id,\n    writing_style: userContext.writing_style || patterns.writing_style,\n    preferences: userContext.preferences || {},\n    common_phrases: patterns.writing_style.common_phrases,\n    decision_patterns: patterns.decision_patterns,\n    work_patterns: patterns.temporal_patterns\n  },\n  \n  // Current context\n  current: {\n    workflow: requestData.workflow_type,\n    input: requestData.current_input,\n    timestamp: new Date().toISOString(),\n    related_items: recentItems.slice(0, 10).map(item => ({\n      id: item.id,\n      title: item.properties?.Name?.title[0]?.plain_text || 'Untitled',\n      type: detectItemType(item),\n      last_edited: item.last_edited_time\n    }))\n  },\n  \n  // Historical patterns\n  patterns: {\n    success_patterns: patterns.success_indicators.high_confidence_patterns,\n    common_actions: patterns.success_indicators.frequently_used,\n    estimation_accuracy: patterns.temporal_patterns.task_duration_accuracy,\n    peak_hours: patterns.temporal_patterns.peak_activity\n  },\n  \n  // Semantic knowledge\n  relevant_knowledge: semanticMatches.map(match => ({\n    title: match.title,\n    content: match.content,\n    relevance_score: match.score,\n    tags: match.tags\n  })),\n  \n  // Personalization hints\n  personalization: {\n    vocabulary_level: patterns.writing_style.vocabulary_level,\n    structure_preference: patterns.writing_style.structure_preference,\n    entity_preference: patterns.decision_patterns.entity_creation,\n    categorization_tendency: patterns.decision_patterns.categorization\n  },\n  \n  // Learning feedback\n  learning: {\n    total_interactions: patterns.success_indicators.high_confidence_patterns.length,\n    confidence_trend: calculateConfidenceTrend(patterns.success_indicators.high_confidence_patterns),\n    improvement_areas: identifyImprovementAreas(patterns)\n  }\n};\n\n// Helper functions\nfunction detectItemType(item) {\n  // Detect based on database ID or properties\n  const dbId = item.parent.database_id;\n  const dbTypeMap = {\n    '21e0d2195e1c809bae77f183b66a78b2': 'epic',\n    '21e0d2195e1c806a947ff1806bffa2fb': 'story',\n    '21e0d2195e1c80a28c67dc2a8ed20e1b': 'task',\n    '21e0d2195e1c802ca067e05dd1e4e908': 'knowledge'\n  };\n  return dbTypeMap[dbId] || 'unknown';\n}\n\nfunction calculateConfidenceTrend(highConfidencePatterns) {\n  if (highConfidencePatterns.length < 2) return 0;\n  \n  const recent = highConfidencePatterns.slice(0, 10);\n  const older = highConfidencePatterns.slice(10, 20);\n  \n  const recentAvg = recent.reduce((sum, p) => sum + p.confidence, 0) / recent.length;\n  const olderAvg = older.reduce((sum, p) => sum + p.confidence, 0) / older.length;\n  \n  return recentAvg - olderAvg;\n}\n\nfunction identifyImprovementAreas(patterns) {\n  const areas = [];\n  \n  // Check estimation accuracy\n  if (patterns.temporal_patterns.task_duration_accuracy < 0.8) {\n    areas.push('estimation_accuracy');\n  }\n  \n  // Check completion rate\n  if (patterns.temporal_patterns.completion_patterns < 0.7) {\n    areas.push('completion_rate');\n  }\n  \n  // Check vocabulary diversity\n  if (patterns.writing_style.vocabulary_level.diversity_ratio < 0.3) {\n    areas.push('vocabulary_diversity');\n  }\n  \n  return areas;\n}\n\nreturn enhancedContext;"
+      },
+      "id": "build-context",
+      "name": "Build Enhanced Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "collection": "context_requests",
+        "fields": "user_id, workflow, context, timestamp",
+        "options": {}
+      },
+      "id": "log-context",
+      "name": "Log Context Request",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1,
+      "position": [1250, 400],
+      "credentials": {
+        "mongoDb": {
+          "id": "3",
+          "name": "MongoDB Context Store"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare response for the requesting workflow\nconst context = $input.first().json;\n\nreturn {\n  success: true,\n  context: context,\n  metadata: {\n    generated_at: new Date().toISOString(),\n    confidence: calculateContextConfidence(context),\n    coverage: calculateContextCoverage(context)\n  },\n  usage_instructions: {\n    system_prompt_enhancement: generateSystemPromptEnhancement(context),\n    user_prompt_enhancement: generateUserPromptEnhancement(context),\n    output_personalization: generateOutputPersonalization(context)\n  }\n};\n\n// Helper functions\nfunction calculateContextConfidence(context) {\n  let confidence = 0.5; // Base confidence\n  \n  // Increase confidence based on available data\n  if (context.user.writing_style) confidence += 0.1;\n  if (context.patterns.success_patterns.length > 10) confidence += 0.1;\n  if (context.relevant_knowledge.length > 5) confidence += 0.1;\n  if (context.learning.total_interactions > 50) confidence += 0.2;\n  \n  return Math.min(confidence, 1.0);\n}\n\nfunction calculateContextCoverage(context) {\n  const aspects = [\n    'user',\n    'current',\n    'patterns',\n    'relevant_knowledge',\n    'personalization',\n    'learning'\n  ];\n  \n  const covered = aspects.filter(aspect => \n    context[aspect] && Object.keys(context[aspect]).length > 0\n  );\n  \n  return covered.length / aspects.length;\n}\n\nfunction generateSystemPromptEnhancement(context) {\n  return `\nUSER CONTEXT:\n- Writing style: ${JSON.stringify(context.user.writing_style)}\n- Common phrases: ${context.user.common_phrases.slice(0, 5).join(', ')}\n- Decision patterns: ${JSON.stringify(context.user.decision_patterns)}\n- Work patterns: Peak activity at hours ${Object.entries(context.patterns.peak_hours).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([h]) => h).join(', ')}\n\nPERSONALIZATION:\n- Vocabulary level: ${context.personalization.vocabulary_level.diversity_ratio.toFixed(2)}\n- Structure preference: ${JSON.stringify(context.personalization.structure_preference)}\n- Entity creation tendency: ${JSON.stringify(context.personalization.entity_preference)}\n\nIMPORTANT: Adapt your response to match the user's style and preferences.`;\n}\n\nfunction generateUserPromptEnhancement(context) {\n  return `\nRELEVANT CONTEXT:\n- Recent items: ${context.current.related_items.map(i => i.title).join(', ')}\n- Relevant knowledge: ${context.relevant_knowledge.slice(0, 3).map(k => k.title).join(', ')}\n- Current workflow: ${context.current.workflow}\n- Timestamp: ${context.current.timestamp}`;\n}\n\nfunction generateOutputPersonalization(context) {\n  return {\n    style_guidelines: [\n      `Match average length of ~${Math.round(context.user.writing_style.average_length)} characters`,\n      context.personalization.structure_preference.uses_bullets ? 'Use bullet points where appropriate' : 'Use paragraph format',\n      `Vocabulary complexity: ${context.personalization.vocabulary_level.diversity_ratio > 0.5 ? 'Advanced' : 'Standard'}`,\n      `Common phrases to use: ${context.user.common_phrases.slice(0, 3).join(', ')}`\n    ],\n    decision_guidelines: [\n      `Categorization preference: ${JSON.stringify(context.personalization.categorization_tendency)}`,\n      `Entity creation preference: ${JSON.stringify(context.personalization.entity_preference)}`,\n      `Estimation accuracy factor: ${context.patterns.estimation_accuracy.toFixed(2)}`\n    ]\n  };\n}"
+      },
+      "id": "prepare-response",
+      "name": "Prepare Context Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.metadata.confidence }}",
+              "operation": "largerEqual",
+              "value2": 0.7
+            }
+          ]
+        }
+      },
+      "id": "check-confidence",
+      "name": "Check Context Confidence",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "low_confidence"
+            },
+            {
+              "name": "message",
+              "value": "Context confidence is low. Consider processing more interactions to improve personalization."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "low-confidence",
+      "name": "Low Confidence Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1650, 300]
+    }
+  ],
+  "connections": {
+    "Context Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get User Context",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Recent Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Historical Patterns",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Content Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Context": {
+      "main": [
+        [
+          {
+            "node": "Build Enhanced Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Items": {
+      "main": [
+        [
+          {
+            "node": "Build Enhanced Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Historical Patterns": {
+      "main": [
+        [
+          {
+            "node": "Analyze User Patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Content Embedding": {
+      "main": [
+        [
+          {
+            "node": "Semantic Knowledge Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Semantic Knowledge Search": {
+      "main": [
+        [
+          {
+            "node": "Build Enhanced Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze User Patterns": {
+      "main": [
+        [
+          {
+            "node": "Build Enhanced Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Enhanced Context": {
+      "main": [
+        [
+          {
+            "node": "Log Context Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Context Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context Response": {
+      "main": [
+        [
+          {
+            "node": "Check Context Confidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Context Confidence": {
+      "main": [
+        [
+          {
+            "node": "Context Request Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Low Confidence Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Low Confidence Response": {
+      "main": [
+        [
+          {
+            "node": "Context Request Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "versionId": "v1.0.0",
+  "triggerCount": 0
+}

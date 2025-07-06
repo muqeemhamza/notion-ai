@@ -1,0 +1,79 @@
+{
+  "mcpServers": {
+    "notion": {
+      "command": "npx",
+      "args": ["-y", "@notionhq/notion-mcp-server"],
+      "env": {
+        "NOTION_API_KEY": "ntn_f35248778523jpOe6IQngDnseZlexMBsf2YC7jt6WEb9NF"
+      }
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=zzmancxxkpwdqjuworvfq"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_1118d8cba6b43d7752083dd01f0b5d1d0befb270"
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking@latest"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem@latest",
+        "/Users/hamza/Desktop/AI Notion"
+      ]
+    },
+    "context7": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-context7@latest"
+      ]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-playwright@latest"
+      ]
+    },
+    "browserbase": {
+      "command": "npx",
+      "args": ["-y", "@browserbasehq/mcp"],
+      "env": {
+        "BROWSERBASE_API_KEY": "bb_live_c0T2_8iqIphqXkaTd238Ygq0kGA",
+        "BROWSERBASE_PROJECT_ID": "90e69ae4-5e03-4192-be82-8f52a64836d7"
+      }
+    },
+    "docker-mcp": {
+      "command": "uvx",
+      "args": [
+        "docker-mcp"
+      ]
+    },
+    "n8n-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e", "MCP_MODE=stdio",
+        "-e", "LOG_LEVEL=error",
+        "-e", "DISABLE_CONSOLE_OUTPUT=true",
+        "-e", "N8N_API_URL=https://techniq.app.n8n.cloud/mcp/a8dd0882-2b3b-4e03-ba8d-26721908a89b/sse",
+        "-e", "N8N_API_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjNDhlYjhmMC0wODM2LTRmOTMtYTRmMC1lN2EwZGE1MmI1MGMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzUxNDk1MDg1fQ.1bTzsZ3hQOuwcC98EviAQsvTbmljz1NHDwH66C3v4Go",
+        "ghcr.io/czlonkowski/n8n-mcp:latest"
+      ]
+    }
+  }
+}
